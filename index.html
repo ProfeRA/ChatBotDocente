@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Consulta Estatuto Docente PBA</title>
+  <style>
+    :root {
+      --primary: #0056b3;
+      --primary-hover: #004085;
+      --bg: #f4f7f6;
+      --chat-bg: #ffffff;
+      --user-msg: #e3f2fd;
+      --user-text: #0d47a1;
+      --bot-msg: #f1f3f4;
+      --bot-text: #1a1a1a;
+      --border: #e0e0e0;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg);
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .chat-container {
+      width: 100%;
+      max-width: 680px;
+      height: 100vh;
+      background: var(--chat-bg);
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    @media (min-width: 768px) {
+      .chat-container {
+        height: 90vh;
+        border-radius: 12px;
+        overflow: hidden;
+      }
+    }
+
+    header {
+      background: var(--primary);
+      color: white;
+      padding: 16px 20px;
+      text-align: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    header p {
+      margin: 4px 0 0;
+      font-size: 0.85rem;
+      opacity: 0.9;
+    }
+
+    .messages {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      background-color: #fafafa;
+    }
+
+    .message {
+      max-width: 85%;
+      padding: 12px 16px;
+      border-radius: 16px;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+    }
+
+    .user {
+      align-self: flex-end;
+      background-color: var(--user-msg);
+      color: var(--user-text);
+      border-bottom-right-radius: 4px;
+    }
+
+    .bot {
+      align-self: flex-start;
+      background-color: var(--bot-msg);
+      color: var(--bot-text);
+      border-bottom-left-radius: 4px;
+      border: 1px solid var(--border);
+    }
+
+    .bot-loading {
+      font-style: italic;
+      color: #666;
+    }
+
+    .input-area {
+      display: flex;
+      padding: 14px;
+      background: var(--chat-bg);
+      border-top: 1px solid var(--border);
+      gap: 10px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      outline: none;
+      font-size: 0.95rem;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--primary);
+    }
+
+    button {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 24px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: background-color 0.2s, opacity 0.2s;
+    }
+
+    button:hover:not(:disabled) {
+      background: var(--primary-hover);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+
+<div class="chat-container">
+  <header>
+    <h1>Asistente Estatuto Docente PBA</h1>
+    <p>Ley 10.579, Dec. 2485/92 y modificatorias</p>
+  </header>
+
+  <div class="messages" id="chatBox">
+    <div class="message bot">
+¡Hola! Sos bienvenido/a. Podés realizarme cualquier consulta sobre el Estatuto del Docente de la Provincia de Buenos Aires (licencias, MAD, ingreso a la docencia, régimen disciplinario, puntaje, etc.).
+    </div>
+  </div>
+
+  <form class="input-area" id="chatForm">
+    <input type="text" id="userInput" placeholder="Ej: ¿Cuántos días me corresponden por examen?" autocomplete="off" required>
+    <button type="submit" id="sendBtn">Enviar</button>
+  </form>
+</div>
+
+<script>
+  const chatForm = document.getElementById('chatForm');
+  const userInput = document.getElementById('userInput');
+  const chatBox = document.getElementById('chatBox');
+  const sendBtn = document.getElementById('sendBtn');
+
+  chatForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = userInput.value.trim();
+    if (!text) return;
+
+    // 1. Mostrar mensaje del usuario
+    appendMessage(text, 'user');
+    userInput.value = '';
+
+    // 2. Bloquear controles y mostrar indicador de carga
+    setFormDisabled(true);
+    const loadingMsg = appendMessage('Consultando el Estatuto...', 'bot bot-loading');
+
+    try {
+      // 3. Petición POST al endpoint del backend Node.js
+      const replyText = await fetchBotResponse(text);
+      loadingMsg.classList.remove('bot-loading');
+      loadingMsg.innerText = replyText;
+    } catch (err) {
+      console.error(err);
+      loadingMsg.classList.remove('bot-loading');
+      loadingMsg.innerText = "Ocurrió un error al procesar la consulta. Por favor, intentá nuevamente.";
+    } finally {
+      // 4. Desbloquear entrada
+      setFormDisabled(false);
+      userInput.focus();
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+  });
+
+  function appendMessage(text, className) {
+    const msg = document.createElement('div');
+    msg.className = `message ${className}`;
+    msg.innerText = text;
+    chatBox.appendChild(msg);
+    chatBox.scrollTop = chatBox.scrollHeight;
+    return msg;
+  }
+
+  function setFormDisabled(disabled) {
+    userInput.disabled = disabled;
+    sendBtn.disabled = disabled;
+  }
+
+  async function fetchBotResponse(query) {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ message: query }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error en el servidor: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.reply;
+  }
+</script>
+
+</body>
+</html>

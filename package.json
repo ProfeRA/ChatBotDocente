@@ -1,0 +1,12 @@
+{
+  "name": "chatbot-estatuto-docente-pba",
+  "version": "1.0.0",
+  "description": "Chatbot de consulta sobre el Estatuto del Docente de la Provincia de Buenos Aires",
+  "main": "api/chat.js",
+  "scripts": {
+    "start": "node api/chat.js"
+    },
+  "dependencies": {
+    "@google/genai": "^0.1.1"
+    }
+}
